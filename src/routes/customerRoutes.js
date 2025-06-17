@@ -3,8 +3,13 @@ const router = express.Router();
 const customerController = require('../controllers/customerController');
 const authMiddleware = require('../middlewares/authMiddleware');
 
-router.post('/add', authMiddleware.authenticateToken, customerController.addCustomer);
-router.post('/deductDebt', authMiddleware.authenticateToken, customerController.deductDebt);
+// Apply authentication middleware to all routes in this router
+router.use(authMiddleware.authenticateToken);
 
+router.post('/add', customerController.addCustomer);
+router.post('/deductDebt', customerController.deductDebt);
+router.post('/addDebt', customerController.addDebt)
+router.get('/getAllCustomers', customerController.getAllCustomers);
+router.get('/getCustomersWithDebts', customerController.getCustomersWithDebts);
 
 module.exports = router;

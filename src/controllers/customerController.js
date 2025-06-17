@@ -15,11 +15,42 @@ class customerController {
         }
     }
 
-    static async deductDebt(req, res) {
-        const { phone, amount } = req.body;
+    static async addDebt (req, res) {
+        const { id , amount } = req.body;
+        const data = { id , amount };
         try {
-            const user = await customerService.deductDebt(phone , amount);
+            const user = await customerService.addCustomer(data);
             res.status(201).json({ message: 'Customer Details updated successfully', user });
+        } catch (err) {
+            res.status(500).json({ message: 'Server error', error: err.message });
+        }
+    }
+
+    static async deductDebt(req, res) {
+        const { id, amount } = req.body;
+        try {
+            const user = await customerService.deductDebt(id , amount);
+            res.status(201).json({ message: 'Customer Details updated successfully', user });
+        } catch (err) {
+            res.status(500).json({ message: 'Server error', error: err.message });
+        }
+    }
+
+    static async getAllCustomers(req, res) {
+        const { userId } = req.user;
+        try {
+            const customers = await customerService.getAllCustomers(userId);
+            res.status(200).json({ customers });
+        } catch (err) {
+            res.status(500).json({ message: 'Server error', error: err.message });
+        }
+    }
+
+    static async getCustomersWithDebts(req, res) {
+        const { userId } = req.user;
+        try {
+            const customers = await customerService.getCustomersWithDebts(userId);
+            res.status(200).json({ customers });
         } catch (err) {
             res.status(500).json({ message: 'Server error', error: err.message });
         }

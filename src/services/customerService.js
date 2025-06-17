@@ -7,18 +7,18 @@ class customerService {
 
     static async addCustomer(data) {
         try {
-            // Check if customer already exists (by phone number)
+            // Check if customer already exists (by id number)
             const existingCustomer = await prisma.customer.findUnique({
-                where: { phone: data.phone }
+                where: { id: data?.id }
             });
 
             if (existingCustomer) {
                 // Increment the amount owed for the existing customer
                 return await prisma.customer.update({
-                    where: { phone: data.phone },
+                    where: { id: data?.id },
                     data: {
                         amountOwed: existingCustomer.amountOwed + data.amount,
-                        is_paid: data.is_paid // Optionally update is_paid status
+                        is_paid: false 
                     }
                 });
             }
@@ -38,11 +38,11 @@ class customerService {
         }
     }
 
-    static async deductDebt(phone, amount) {
+    static async deductDebt(id, amount) {
         try {
-            // Find the customer by phone number
+            // Find the customer by id number
             const customer = await prisma.customer.findUnique({
-                where: { phone }
+                where: { id }
             });
 
             if (!customer) {
@@ -56,10 +56,33 @@ class customerService {
 
             // Update customer record
             return await prisma.customer.update({
-                where: { phone },
+                where: { id },
                 data: {
                     amountOwed: newAmountOwed,
                     is_paid: newAmountOwed === 0
+                }
+            });
+        } catch (e) {
+            throw e;
+        }
+    }
+
+    static async getAllCustomers(userId) {
+        try {
+            return await prisma.customer.findMany({
+                where: { userId }
+            });
+        } catch (e) {
+            throw e;
+        }
+    }
+
+    static async getCustomersWithDebts(userId) {
+        try {
+            return await prisma.customer.findMany({
+                where: {
+                    userId,
+                    amountOwed: { gt: 0 }
                 }
             });
         } catch (e) {
