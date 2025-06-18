@@ -3,10 +3,10 @@ const customerService = require('../services/customerService');
 class customerController {
     // Add a new customer 
     static async addCustomer(req, res) {
-        const { name, phone, amount, is_paid } = req.body;
+        const { name, phone, amount } = req.body;
         const { userId } = req.user;
         console.log(`Here is the id ${userId}`)
-        const data = { name, phone, amount, is_paid, userId };
+        const data = { name, phone, amount, is_paid : false , userId };
         try {
             const user = await customerService.addCustomer(data);
             res.status(201).json({ message: 'Customer Details entered successfully', user });
