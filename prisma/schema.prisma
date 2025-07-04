@@ -13,23 +13,77 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-
-
+// USERS MODULE
 model User {
-  id       Int     @id @default(autoincrement())
-  email    String  @unique
-  password String
-  name     String?
+  id        Int         @id @default(autoincrement())
+  email     String      @unique
+  password  String
+  name      String?
+  shopName  String?
   customers Customer[]
-  createdAt DateTime @default(now())
+  debts     Debt[]
+  payments  Payment[]
+  createdAt DateTime    @default(now())
 }
+
+// CUSTOMERS MODULE - Only customer information (NO debt info)
 model Customer {
-  id         Int      @id @default(autoincrement())
-  name       String
-  phone String @unique
-  amountOwed Int
-  is_paid     Boolean   @default(true)
-  userId     Int
-  user       User     @relation(fields: [userId], references: [id])
-  createdAt  DateTime @default(now())
+  id        Int      @id @default(autoincrement())
+  name      String
+  phone     String   @unique
+  email     String?
+  address   String?
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  debts     Debt[]   // Relation to debts
+  payments  Payment[] // Relation to payments
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt  // Added default value
+  
+  @@index([userId])
+  @@index([phone])
+}
+
+// DEBT MODULE - Only debt information
+model Debt {
+  id          Int       @id @default(autoincrement())
+  customerId  Int
+  customer    Customer  @relation(fields: [customerId], references: [id])
+  userId      Int
+  user        User      @relation(fields: [userId], references: [id])
+  amount      Float
+  description String?
+  dueDate     DateTime?
+  isPaid      Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @default(now()) @updatedAt  // Added default value
+  
+  @@index([customerId])
+  @@index([userId, isPaid])
+  @@index([createdAt])
+}
+
+// PAYMENT MODULE - Only payment information
+model Payment {
+  id            Int           @id @default(autoincrement())
+  customerId    Int
+  customer      Customer      @relation(fields: [customerId], references: [id])
+  userId        Int
+  user          User          @relation(fields: [userId], references: [id])
+  amount        Float
+  paymentMethod PaymentMethod @default(CASH)
+  description   String?
+  reference     String?       // Receipt number, M-Pesa code, etc.
+  createdAt     DateTime      @default(now())
+  
+  @@index([customerId])
+  @@index([userId])
+  @@index([createdAt])
+}
+
+enum PaymentMethod {
+  CASH
+  MPESA
+  BANK_TRANSFER
+  OTHER
 }

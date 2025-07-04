@@ -1,49 +1,34 @@
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
-const sendSMS = require('../utils/sms')
 
-class customerService {
-    static AMOUNT = 200;
+/**
+ * CUSTOMER SERVICE MODULE
+ * Handles ONLY customer-related operations
+ * No debt logic here - pure customer management
+ */
+class CustomerService {
 
-    static async addCustomer(data) {
+    // Create a new customer
+    static async createCustomer(data) {
         try {
+            const { name, phone, email, address, userId } = data;
 
-            if (data?.id) {
-                // Check if customer already exists (by id number)
-                const existingCustomer = await prisma.customer.findUnique({
-                    where: { id: data?.id }
-                });
+            // Check if customer already exists
+            const existingCustomer = await prisma.customer.findUnique({
+                where: { phone }
+            });
 
-                if (existingCustomer) {
-                    console.log("Its an existing customer bro")
-                    console.log(`Existing amount : ${existingCustomer.amountOwed + data.amount}`)
-                    console.log(`Pass mark : ${this.AMOUNT}`)
-                    if (existingCustomer.amountOwed + data.amount >= this.AMOUNT) {
-                        console.log("Hapa ni sending block")
-                        sendSMS();
-                    }
-                    // Increment the amount owed for the existing customer
-                    return await prisma.customer.update({
-                        where: { id: data?.id },
-                        data: {
-                            amountOwed: existingCustomer.amountOwed + data.amount,
-                            is_paid: false
-                        }
-                    });
-                }
+            if (existingCustomer) {
+                throw new Error('Customer with this phone number already exists');
             }
 
-
-            // Create new customer in the database
             return await prisma.customer.create({
                 data: {
-                    name: data.name,
-                    phone: data.phone,
-                    amountOwed: data.amount,
-                    is_paid: data.is_paid,
-                    userId: data.userId
+                    name,
+                    phone,
+                    email,
+                    address,
+                    userId
                 }
             });
         } catch (e) {
@@ -51,51 +36,91 @@ class customerService {
         }
     }
 
-    static async deductDebt(id, amount) {
-        try {
-            // Find the customer by id number
-            const customer = await prisma.customer.findUnique({
-                where: { id }
-            });
-
-            if (!customer) {
-                throw new Error('Customer not found');
-            }
-
-            // Calculate new amount owed
-            let newAmountOwed = customer.amountOwed - amount;
-            // sourcery skip: use-braces
-            if (newAmountOwed < 0) newAmountOwed = 0;
-
-            // Update customer record
-            return await prisma.customer.update({
-                where: { id },
-                data: {
-                    amountOwed: newAmountOwed,
-                    is_paid: newAmountOwed === 0
-                }
-            });
-        } catch (e) {
-            throw e;
-        }
-    }
-
+    // Get all customers for a user
     static async getAllCustomers(userId) {
         try {
             return await prisma.customer.findMany({
-                where: { userId }
+                where: { userId },
+                orderBy: { createdAt: 'desc' }
             });
         } catch (e) {
             throw e;
         }
     }
 
-    static async getCustomersWithDebts(userId) {
+    // Get customer by ID
+    static async getCustomerById(customerId, userId) {
+        try {
+            return await prisma.customer.findFirst({
+                where: {
+                    id: customerId,
+                    userId
+                }
+            });
+        } catch (e) {
+            throw e;
+        }
+    }
+
+    // Search customers by name or phone
+    static async searchCustomers(query, userId) {
         try {
             return await prisma.customer.findMany({
                 where: {
                     userId,
-                    amountOwed: { gt: 0 }
+                    OR: [
+                        { name: { contains: query, mode: 'insensitive' } },
+                        { phone: { contains: query } }
+                    ]
+                },
+                orderBy: { name: 'asc' }
+            });
+        } catch (e) {
+            throw e;
+        }
+    }
+
+    // Update customer details
+    static async updateCustomer(customerId, data, userId) {
+        try {
+            const { name, phone, email, address } = data;
+
+            return await prisma.customer.update({
+                where: {
+                    id: customerId,
+                    userId
+                },
+                data: {
+                    name,
+                    phone,
+                    email,
+                    address
+                }
+            });
+        } catch (e) {
+            throw e;
+        }
+    }
+
+    // Delete customer
+    static async deleteCustomer(customerId, userId) {
+        try {
+            // Check if customer has unpaid debts
+            const unpaidDebts = await prisma.debt.findFirst({
+                where: {
+                    customerId,
+                    isPaid: false
+                }
+            });
+
+            if (unpaidDebts) {
+                throw new Error('Cannot delete customer with unpaid debts');
+            }
+
+            return await prisma.customer.delete({
+                where: {
+                    id: customerId,
+                    userId
                 }
             });
         } catch (e) {
@@ -104,4 +129,4 @@ class customerService {
     }
 }
 
-module.exports = customerService
+module.exports = CustomerService;

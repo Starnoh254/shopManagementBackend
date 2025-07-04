@@ -8,29 +8,58 @@ class authService {
         return prisma.user.findUnique({ where: { email } });
     }
 
-    static async registerUser (email, password) {
+    static async registerUser(email, password, name) {
         const existingUser = await this.findUserByEmail(email);
         if (existingUser) {
-            throw new Error('User already exists');
+            return {
+                success: false,
+                message: 'User already exists'
+            };
         }
         const hashedPassword = await bcrypt.hash(password, 10);
         const user = await prisma.user.create({
-            data: { email, password: hashedPassword },
+            data: {
+                email,
+                password: hashedPassword,
+                name: name || null
+            },
         });
-        return { id: user.id, email: user.email };
+        return {
+            success: true,
+            message: 'User registered successfully',
+            user: {
+                id: user.id,
+                name: user.name,
+                email: user.email
+            }
+        };
     };
 
     static async loginUser(email, password) {
         const user = await this.findUserByEmail(email);
         if (!user) {
-            throw new Error('Invalid credentials');
+            return {
+                success: false,
+                message: 'Invalid credentials - user not found'
+            };
         }
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
-            throw new Error('Invalid credentials');
+            return {
+                success: false,
+                message: 'Invalid credentials - incorrect password'
+            };
         }
         const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: '1h' });
-        return { token };
+        return {
+            success: true,
+            token,
+            user: {
+                id: user.id,
+                name: user.name,
+                email: user.email
+            }
+        };
     };
 }
 
