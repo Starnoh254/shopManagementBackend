@@ -5,9 +5,10 @@
   "main": "index.js",
   "scripts": {
     "dev": "nodemon node server.js",
-    "migrate": "npx prisma migrate deploy",
+    "migrate": "npx prisma migrate deploy && npx prisma generate",
     "migrate-dev": "npx prisma migrate dev",
-    "push": "npx prisma db push --accept-data-loss",
+    "push": "npx prisma db push --accept-data-loss && npx prisma generate",
+    "generate": "npx prisma generate",
     "migrate-data": "node scripts/migrate-customer-data.js",
     "deploy-safe": "npm run migrate-data && npm run push",
     "resolve-migration": "node scripts/resolve-failed-migration.js",
