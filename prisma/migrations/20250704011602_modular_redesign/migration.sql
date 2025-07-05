@@ -7,23 +7,23 @@
 
 */
 -- DropForeignKey
-ALTER TABLE `transaction` DROP FOREIGN KEY `Transaction_customerId_fkey`;
+ALTER TABLE `Transaction` DROP FOREIGN KEY `Transaction_customerId_fkey`;
 
 -- DropForeignKey
-ALTER TABLE `transaction` DROP FOREIGN KEY `Transaction_userId_fkey`;
+ALTER TABLE `Transaction` DROP FOREIGN KEY `Transaction_userId_fkey`;
 
 -- AlterTable
-ALTER TABLE `customer` DROP COLUMN `amountOwed`,
+ALTER TABLE `Customer` DROP COLUMN `amountOwed`,
     DROP COLUMN `is_paid`,
     ADD COLUMN `address` VARCHAR(191) NULL,
     ADD COLUMN `email` VARCHAR(191) NULL,
     ADD COLUMN `updatedAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3);
 
 -- AlterTable
-ALTER TABLE `user` ADD COLUMN `shopName` VARCHAR(191) NULL;
+ALTER TABLE `User` ADD COLUMN `shopName` VARCHAR(191) NULL;
 
 -- DropTable
-DROP TABLE `transaction`;
+DROP TABLE `Transaction`;
 
 -- CreateTable
 CREATE TABLE `Debt` (
@@ -76,4 +76,4 @@ ALTER TABLE `Payment` ADD CONSTRAINT `Payment_customerId_fkey` FOREIGN KEY (`cus
 ALTER TABLE `Payment` ADD CONSTRAINT `Payment_userId_fkey` FOREIGN KEY (`userId`) REFERENCES `User`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- RenameIndex
-ALTER TABLE `customer` RENAME INDEX `Customer_userId_fkey` TO `Customer_userId_idx`;
+ALTER TABLE `Customer` RENAME INDEX `Customer_userId_fkey` TO `Customer_userId_idx`;
