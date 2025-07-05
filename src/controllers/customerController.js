@@ -119,6 +119,55 @@ class CustomerController {
             res.status(500).json({ message: 'Server error', error: err.message });
         }
     }
+
+    // Get all customers with balance information
+    static async getAllCustomersWithBalance(req, res) {
+        try {
+            const { userId } = req.user;
+            const customers = await CustomerService.getAllCustomersWithBalance(userId);
+
+            res.status(200).json({
+                success: true,
+                customers
+            });
+        } catch (err) {
+            res.status(500).json({
+                success: false,
+                message: 'Server error',
+                error: err.message
+            });
+        }
+    }
+
+    // Get customer with detailed balance information
+    static async getCustomerWithBalance(req, res) {
+        try {
+            const { customerId } = req.params;
+            const { userId } = req.user;
+
+            const customer = await CustomerService.getCustomerWithBalance(
+                parseInt(customerId),
+                userId
+            );
+
+            res.status(200).json({
+                success: true,
+                customer
+            });
+        } catch (err) {
+            if (err.message === 'Customer not found') {
+                return res.status(404).json({
+                    success: false,
+                    message: err.message
+                });
+            }
+            res.status(500).json({
+                success: false,
+                message: 'Server error',
+                error: err.message
+            });
+        }
+    }
 }
 
 module.exports = CustomerController;

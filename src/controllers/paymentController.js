@@ -22,11 +22,7 @@ class PaymentController {
                 userId
             });
 
-            res.status(201).json({
-                message: 'Payment recorded successfully',
-                payment: result.payment,
-                remainingPayment: result.remainingPayment
-            });
+            res.status(201).json(result);
         } catch (err) {
             if (err.message === 'Customer not found') {
                 return res.status(404).json({ message: err.message });
@@ -117,6 +113,42 @@ class PaymentController {
             res.status(200).json({ analytics });
         } catch (err) {
             res.status(500).json({ message: 'Server error', error: err.message });
+        }
+    }
+
+    // Apply customer's credit balance to pay debts
+    static async applyCreditToDebts(req, res) {
+        try {
+            const { customerId } = req.params;
+            const { creditAmount } = req.body; // Optional: specific amount to apply
+            const { userId } = req.user;
+
+            const result = await PaymentService.applyCreditToDebts(
+                parseInt(customerId),
+                userId,
+                creditAmount ? parseFloat(creditAmount) : null
+            );
+
+            res.status(200).json(result);
+        } catch (err) {
+            if (err.message === 'Customer not found') {
+                return res.status(404).json({
+                    success: false,
+                    message: err.message
+                });
+            }
+            if (err.message === 'Customer has no credit balance' ||
+                err.message === 'Customer has no unpaid debts') {
+                return res.status(400).json({
+                    success: false,
+                    message: err.message
+                });
+            }
+            res.status(500).json({
+                success: false,
+                message: 'Server error',
+                error: err.message
+            });
         }
     }
 }

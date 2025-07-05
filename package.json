@@ -6,11 +6,12 @@
   "scripts": {
     "dev": "nodemon node server.js",
     "migrate": "npx prisma migrate deploy",
+    "migrate-dev": "npx prisma migrate dev",
     "push": "npx prisma db push --accept-data-loss",
     "migrate-data": "node scripts/migrate-customer-data.js",
     "deploy-safe": "npm run migrate-data && npm run push",
-    "start": "npm run push && node server.js",
-    "start-migrate": "npm run migrate && node server.js",
+    "start": "npm run migrate && node server.js",
+    "start-push": "npm run push && node server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

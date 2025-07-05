@@ -15,30 +15,33 @@ datasource db {
 
 // USERS MODULE
 model User {
-  id        Int         @id @default(autoincrement())
-  email     String      @unique
-  password  String
-  name      String?
-  shopName  String?
-  customers Customer[]
-  debts     Debt[]
-  payments  Payment[]
-  createdAt DateTime    @default(now())
+  id                 Int                @id @default(autoincrement())
+  email              String             @unique
+  password           String
+  name               String?
+  shopName           String?
+  customers          Customer[]
+  debts              Debt[]
+  payments           Payment[]
+  creditTransactions CreditTransaction[]
+  createdAt          DateTime           @default(now())
 }
 
 // CUSTOMERS MODULE - Only customer information (NO debt info)
 model Customer {
-  id        Int      @id @default(autoincrement())
-  name      String
-  phone     String   @unique
-  email     String?
-  address   String?
-  userId    Int
-  user      User     @relation(fields: [userId], references: [id])
-  debts     Debt[]   // Relation to debts
-  payments  Payment[] // Relation to payments
-  createdAt DateTime @default(now())
-  updatedAt DateTime @default(now()) @updatedAt  // Added default value
+  id                 Int                @id @default(autoincrement())
+  name               String
+  phone              String             @unique
+  email              String?
+  address            String?
+  creditBalance      Float              @default(0)  // Track overpayments as credit
+  userId             Int
+  user               User               @relation(fields: [userId], references: [id])
+  debts              Debt[]             // Relation to debts
+  payments           Payment[]          // Relation to payments
+  creditTransactions CreditTransaction[] // Relation to credit transactions
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @default(now()) @updatedAt
   
   @@index([userId])
   @@index([phone])
@@ -71,6 +74,8 @@ model Payment {
   userId        Int
   user          User          @relation(fields: [userId], references: [id])
   amount        Float
+  appliedToDebt Float         @default(0)  // Amount applied to debt
+  creditAmount  Float         @default(0)  // Amount added to credit balance
   paymentMethod PaymentMethod @default(CASH)
   description   String?
   reference     String?       // Receipt number, M-Pesa code, etc.
@@ -86,4 +91,29 @@ enum PaymentMethod {
   MPESA
   BANK_TRANSFER
   OTHER
+}
+
+// CREDIT TRANSACTION MODULE - Track credit balance changes
+model CreditTransaction {
+  id          Int               @id @default(autoincrement())
+  customerId  Int
+  customer    Customer          @relation(fields: [customerId], references: [id])
+  userId      Int
+  user        User              @relation(fields: [userId], references: [id])
+  amount      Float             // Positive = credit added, Negative = credit used
+  type        CreditTransactionType
+  description String?
+  relatedDebtId Int?            // If credit was applied to a specific debt
+  relatedPaymentId Int?         // If credit came from an overpayment
+  createdAt   DateTime          @default(now())
+  
+  @@index([customerId])
+  @@index([userId])
+  @@index([createdAt])
+}
+
+enum CreditTransactionType {
+  OVERPAYMENT_ADDED     // Credit added from overpayment
+  APPLIED_TO_DEBT       // Credit used to pay debt
+  MANUAL_ADJUSTMENT     // Manual credit adjustment
 }

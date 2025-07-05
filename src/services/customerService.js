@@ -127,6 +127,85 @@ class CustomerService {
             throw e;
         }
     }
+
+    // Get customer with detailed balance information
+    static async getCustomerWithBalance(customerId, userId) {
+        try {
+            const customer = await prisma.customer.findFirst({
+                where: {
+                    id: customerId,
+                    userId
+                },
+                include: {
+                    debts: {
+                        where: { isPaid: false },
+                        orderBy: { createdAt: 'desc' }
+                    },
+                    payments: {
+                        orderBy: { createdAt: 'desc' },
+                        take: 10 // Last 10 payments
+                    }
+                }
+            });
+
+            if (!customer) {
+                throw new Error('Customer not found');
+            }
+
+            // Calculate total unpaid debt
+            const totalDebt = customer.debts.reduce((sum, debt) => sum + debt.amount, 0);
+
+            // Calculate net balance (negative = owes money, positive = has credit)
+            const netBalance = customer.creditBalance - totalDebt;
+
+            return {
+                ...customer,
+                balance: {
+                    totalDebt,
+                    creditBalance: customer.creditBalance,
+                    netBalance,
+                    status: netBalance >= 0 ? 'CREDIT' : 'DEBT'
+                }
+            };
+        } catch (e) {
+            throw e;
+        }
+    }
+
+    // Get all customers with balance summary
+    static async getAllCustomersWithBalance(userId) {
+        try {
+            const customers = await prisma.customer.findMany({
+                where: { userId },
+                include: {
+                    debts: {
+                        where: { isPaid: false }
+                    }
+                },
+                orderBy: { updatedAt: 'desc' }
+            });
+
+            return customers.map(customer => {
+                const totalDebt = customer.debts.reduce((sum, debt) => sum + debt.amount, 0);
+                const netBalance = customer.creditBalance - totalDebt;
+
+                return {
+                    id: customer.id,
+                    name: customer.name,
+                    phone: customer.phone,
+                    email: customer.email,
+                    creditBalance: customer.creditBalance,
+                    totalDebt,
+                    netBalance,
+                    status: netBalance >= 0 ? 'CREDIT' : 'DEBT',
+                    createdAt: customer.createdAt,
+                    updatedAt: customer.updatedAt
+                };
+            });
+        } catch (e) {
+            throw e;
+        }
+    }
 }
 
 module.exports = CustomerService;
