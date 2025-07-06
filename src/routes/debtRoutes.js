@@ -4,7 +4,7 @@ const DebtController = require('../controllers/debtController');
 const authMiddleware = require('../middlewares/authMiddleware');
 
 // Apply authentication middleware to all routes in this router
-router.use(authMiddleware.authenticateToken);
+router.use(authMiddleware);
 
 // DEBT MANAGEMENT ROUTES
 router.post('/add', DebtController.addDebt);                                    // Add debt to customer

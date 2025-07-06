@@ -20,10 +20,18 @@ model User {
   password           String
   name               String?
   shopName           String?
+  businessType       BusinessType?      @default(MIXED)
+  currency           String?            @default("KES")
+  defaultTaxRate     Float?             @default(16)
+  businessAddress    String?
   customers          Customer[]
   debts              Debt[]
   payments           Payment[]
   creditTransactions CreditTransaction[]
+  products           Product[]          // Sales system
+  services           Service[]          // Sales system
+  sales              Sale[]             // Sales system
+  inventoryItems     InventoryItem[]    // Sales system
   createdAt          DateTime           @default(now())
 }
 
@@ -40,6 +48,7 @@ model Customer {
   debts              Debt[]             // Relation to debts
   payments           Payment[]          // Relation to payments
   creditTransactions CreditTransaction[] // Relation to credit transactions
+  sales              Sale[]             // Relation to sales (NEW)
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @default(now()) @updatedAt
   
@@ -58,12 +67,15 @@ model Debt {
   description String?
   dueDate     DateTime?
   isPaid      Boolean   @default(false)
+  saleId      Int?      // Optional: if debt was created from a credit sale
+  sale        Sale?     @relation(fields: [saleId], references: [id])
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @default(now()) @updatedAt  // Added default value
   
   @@index([customerId])
   @@index([userId, isPaid])
   @@index([createdAt])
+  @@index([saleId])
 }
 
 // PAYMENT MODULE - Only payment information
@@ -79,11 +91,14 @@ model Payment {
   paymentMethod PaymentMethod @default(CASH)
   description   String?
   reference     String?       // Receipt number, M-Pesa code, etc.
+  saleId        Int?          // Optional: if payment was for a specific sale
+  sale          Sale?         @relation(fields: [saleId], references: [id])
   createdAt     DateTime      @default(now())
   
   @@index([customerId])
   @@index([userId])
   @@index([createdAt])
+  @@index([saleId])
 }
 
 enum PaymentMethod {
@@ -116,4 +131,186 @@ enum CreditTransactionType {
   OVERPAYMENT_ADDED     // Credit added from overpayment
   APPLIED_TO_DEBT       // Credit used to pay debt
   MANUAL_ADJUSTMENT     // Manual credit adjustment
+}
+
+// BUSINESS TYPE ENUM
+enum BusinessType {
+  PRODUCTS_ONLY     // Only sells physical products
+  SERVICES_ONLY     // Only offers services
+  MIXED             // Sells both products and services
+}
+
+// PRODUCTS MODULE - Physical items for sale
+model Product {
+  id            Int             @id @default(autoincrement())
+  name          String
+  description   String?
+  category      String?
+  sellingPrice  Float
+  costPrice     Float?          // What business paid for the product
+  sku           String?         @unique // Stock Keeping Unit
+  unit          String?         @default("piece") // "piece", "kg", "liter", etc.
+  trackInventory Boolean        @default(true)
+  userId        Int
+  user          User            @relation(fields: [userId], references: [id])
+  
+  // Relations
+  inventoryItems InventoryItem[]
+  saleItems      SaleItem[]
+  serviceMaterials ServiceMaterial[] // Materials used in services
+  
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  
+  @@index([userId])
+  @@index([category])
+  @@index([name])
+}
+
+// INVENTORY MODULE - Track stock levels
+model InventoryItem {
+  id            Int       @id @default(autoincrement())
+  productId     Int
+  product       Product   @relation(fields: [productId], references: [id])
+  quantity      Int       @default(0)
+  reorderLevel  Int?      @default(10) // Alert when stock goes below this
+  location      String?   // Shelf location, warehouse, etc.
+  userId        Int
+  user          User      @relation(fields: [userId], references: [id])
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  @@index([productId])
+  @@index([userId])
+  @@unique([productId, userId]) // One inventory record per product per user
+}
+
+// SERVICES MODULE - Services offered by business
+model Service {
+  id              Int               @id @default(autoincrement())
+  name            String
+  description     String?
+  category        String?
+  price           Float
+  costEstimate    Float?            // Estimated cost to deliver service
+  duration        Int?              // Duration in minutes
+  requiresBooking Boolean           @default(false)
+  requiresMaterials Boolean         @default(false)
+  isActive        Boolean           @default(true)
+  userId          Int
+  user            User              @relation(fields: [userId], references: [id])
+  
+  // Relations
+  serviceMaterials ServiceMaterial[] // Materials needed for this service
+  saleItems       SaleItem[]
+  
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  
+  @@index([userId])
+  @@index([category])
+  @@index([name])
+}
+
+// SERVICE MATERIALS - Materials/products used in services
+model ServiceMaterial {
+  id        Int     @id @default(autoincrement())
+  serviceId Int
+  service   Service @relation(fields: [serviceId], references: [id])
+  productId Int
+  product   Product @relation(fields: [productId], references: [id])
+  quantity  Int     @default(1) // How many units of product used per service
+  
+  @@index([serviceId])
+  @@index([productId])
+  @@unique([serviceId, productId])
+}
+
+// SALES MODULE - Main sales transactions
+model Sale {
+  id             Int        @id @default(autoincrement())
+  saleNumber     String?    @unique // Generated sale number
+  customerId     Int?       // Optional - can have walk-in customers
+  customer       Customer?  @relation(fields: [customerId], references: [id])
+  userId         Int
+  user           User       @relation(fields: [userId], references: [id])
+  
+  // Sale totals
+  subtotal       Float      // Before discounts and tax
+  discountAmount Float?     @default(0)
+  taxAmount      Float?     @default(0)
+  totalAmount    Float      // Final amount
+  totalCost      Float?     @default(0) // Total cost of goods/services sold
+  totalProfit    Float?     @default(0) // totalAmount - totalCost
+  
+  saleType       SaleType   @default(CASH)
+  status         SaleStatus @default(COMPLETED)
+  
+  // Relations
+  saleItems      SaleItem[]
+  payments       Payment[]  // Payments made for this sale
+  debts          Debt[]     // Debts created from this sale (if credit sale)
+  
+  notes          String?
+  receiptNumber  String?    @unique
+  
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  
+  @@index([customerId])
+  @@index([userId])
+  @@index([createdAt])
+  @@index([saleNumber])
+}
+
+// SALE ITEMS - Individual products/services in a sale
+model SaleItem {
+  id         Int      @id @default(autoincrement())
+  saleId     Int
+  sale       Sale     @relation(fields: [saleId], references: [id])
+  
+  // Item details (either product OR service)
+  itemType   ItemType // "PRODUCT" or "SERVICE"
+  productId  Int?     // If selling a product
+  product    Product? @relation(fields: [productId], references: [id])
+  serviceId  Int?     // If selling a service
+  service    Service? @relation(fields: [serviceId], references: [id])
+  
+  // Pricing
+  quantity   Int
+  unitPrice  Float    // Price at time of sale (can override default)
+  totalPrice Float    // quantity * unitPrice
+  unitCost   Float?   @default(0) // Cost per unit at time of sale
+  totalCost  Float?   @default(0) // quantity * unitCost
+  profit     Float?   @default(0) // totalPrice - totalCost
+  
+  // Service-specific
+  scheduledFor DateTime? // For bookable services
+  isCompleted  Boolean   @default(true)
+  
+  createdAt  DateTime  @default(now())
+  
+  @@index([saleId])
+  @@index([productId])
+  @@index([serviceId])
+}
+
+// ENUMS for Sales System
+enum SaleType {
+  CASH
+  CREDIT
+  PARTIAL_PAYMENT
+}
+
+enum SaleStatus {
+  PENDING
+  COMPLETED
+  CANCELLED
+  REFUNDED
+}
+
+enum ItemType {
+  PRODUCT
+  SERVICE
 }

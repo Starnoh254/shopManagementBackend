@@ -4,7 +4,7 @@ const CustomerController = require('../controllers/customerController');
 const authMiddleware = require('../middlewares/authMiddleware');
 
 // Apply authentication middleware to all routes in this router
-router.use(authMiddleware.authenticateToken);
+router.use(authMiddleware);
 
 // CUSTOMER MANAGEMENT ROUTES (NO debt logic here)
 router.post('/create', CustomerController.createCustomer);               // Create new customer

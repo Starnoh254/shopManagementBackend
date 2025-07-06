@@ -4,7 +4,7 @@ const PaymentController = require('../controllers/paymentController');
 const authMiddleware = require('../middlewares/authMiddleware');
 
 // Apply authentication middleware to all routes in this router
-router.use(authMiddleware.authenticateToken);
+router.use(authMiddleware);
 
 // PAYMENT MANAGEMENT ROUTES
 router.post('/record', PaymentController.recordPayment);                        // Record a payment
