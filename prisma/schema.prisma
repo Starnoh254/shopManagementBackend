@@ -58,19 +58,24 @@ model Customer {
 
 // DEBT MODULE - Only debt information
 model Debt {
-  id          Int       @id @default(autoincrement())
-  customerId  Int
-  customer    Customer  @relation(fields: [customerId], references: [id])
-  userId      Int
-  user        User      @relation(fields: [userId], references: [id])
-  amount      Float
-  description String?
-  dueDate     DateTime?
-  isPaid      Boolean   @default(false)
-  saleId      Int?      // Optional: if debt was created from a credit sale
-  sale        Sale?     @relation(fields: [saleId], references: [id])
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @default(now()) @updatedAt  // Added default value
+  id              Int                 @id @default(autoincrement())
+  customerId      Int
+  customer        Customer            @relation(fields: [customerId], references: [id])
+  userId          Int
+  user            User                @relation(fields: [userId], references: [id])
+  amount          Float               // Current remaining amount
+  originalAmount  Float               // Original debt amount (never changes)
+  description     String?
+  dueDate         DateTime?
+  isPaid          Boolean             @default(false)
+  saleId          Int?                // Optional: if debt was created from a credit sale
+  sale            Sale?               @relation(fields: [saleId], references: [id])
+  
+  // Relations for payment tracking
+  paymentAllocations PaymentAllocation[]
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @default(now()) @updatedAt
   
   @@index([customerId])
   @@index([userId, isPaid])
@@ -93,12 +98,32 @@ model Payment {
   reference     String?       // Receipt number, M-Pesa code, etc.
   saleId        Int?          // Optional: if payment was for a specific sale
   sale          Sale?         @relation(fields: [saleId], references: [id])
+  
+  // Relations for payment tracking
+  allocations   PaymentAllocation[]
+  creditTransactions CreditTransaction[] @relation("PaymentCreditTransactions")
+  
   createdAt     DateTime      @default(now())
   
   @@index([customerId])
   @@index([userId])
   @@index([createdAt])
   @@index([saleId])
+}
+
+// PAYMENT ALLOCATION - Track which debts were paid by each payment
+model PaymentAllocation {
+  id          Int     @id @default(autoincrement())
+  paymentId   Int
+  payment     Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  debtId      Int
+  debt        Debt    @relation(fields: [debtId], references: [id], onDelete: Cascade)
+  amount      Float   // How much of this payment went to this debt
+  allocatedAt DateTime @default(now())
+
+  @@index([paymentId])
+  @@index([debtId])
+  @@unique([paymentId, debtId]) // Prevent duplicate allocations
 }
 
 enum PaymentMethod {
@@ -120,6 +145,7 @@ model CreditTransaction {
   description String?
   relatedDebtId Int?            // If credit was applied to a specific debt
   relatedPaymentId Int?         // If credit came from an overpayment
+  relatedPayment Payment?       @relation("PaymentCreditTransactions", fields: [relatedPaymentId], references: [id])
   createdAt   DateTime          @default(now())
   
   @@index([customerId])

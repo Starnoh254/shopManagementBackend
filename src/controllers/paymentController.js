@@ -151,6 +151,101 @@ class PaymentController {
             });
         }
     }
+
+    // Get payment with detailed debt allocations
+    static async getPaymentWithDebts(req, res) {
+        try {
+            const { paymentId } = req.params;
+            const { userId } = req.user;
+
+            const payment = await PaymentService.getPaymentWithDebts(parseInt(paymentId), userId);
+
+            if (!payment) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Payment not found'
+                });
+            }
+
+            res.status(200).json({
+                success: true,
+                payment
+            });
+        } catch (err) {
+            res.status(500).json({
+                success: false,
+                message: 'Server error',
+                error: err.message
+            });
+        }
+    }
+
+    // Get debt payment history and percentage paid
+    static async getDebtPaymentHistory(req, res) {
+        try {
+            const { debtId } = req.params;
+            const { userId } = req.user;
+
+            const result = await PaymentService.getDebtPaymentHistory(parseInt(debtId), userId);
+            res.status(200).json(result);
+        } catch (err) {
+            if (err.message === 'Debt not found') {
+                return res.status(404).json({
+                    success: false,
+                    message: err.message
+                });
+            }
+            res.status(500).json({
+                success: false,
+                message: 'Server error',
+                error: err.message
+            });
+        }
+    }
+
+    // Get customer's debt and payment summary
+    static async getCustomerDebtSummary(req, res) {
+        try {
+            const { customerId } = req.params;
+            const { userId } = req.user;
+
+            const result = await PaymentService.getCustomerDebtSummary(parseInt(customerId), userId);
+            res.status(200).json(result);
+        } catch (err) {
+            if (err.message === 'Customer not found') {
+                return res.status(404).json({
+                    success: false,
+                    message: err.message
+                });
+            }
+            res.status(500).json({
+                success: false,
+                message: 'Server error',
+                error: err.message
+            });
+        }
+    }
+
+    // Get enhanced payment analytics with debt tracking
+    static async getPaymentAnalyticsEnhanced(req, res) {
+        try {
+            const { userId } = req.user;
+            const filters = {
+                startDate: req.query.startDate,
+                endDate: req.query.endDate,
+                customerId: req.query.customerId
+            };
+
+            const result = await PaymentService.getPaymentAnalyticsEnhanced(userId, filters);
+            res.status(200).json(result);
+        } catch (err) {
+            res.status(500).json({
+                success: false,
+                message: 'Server error',
+                error: err.message
+            });
+        }
+    }
 }
 
 module.exports = PaymentController;

@@ -33,6 +33,7 @@ class DebtService {
                     customerId,
                     userId,
                     amount,
+                    originalAmount: amount, // Track original debt amount
                     description: description || 'Debt added',
                     dueDate: dueDate ? new Date(dueDate) : null
                 }

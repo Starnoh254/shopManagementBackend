@@ -141,6 +141,7 @@ class SalesService {
                             customerId,
                             userId,
                             amount: totalAmount,
+                            originalAmount: totalAmount, // Track original debt amount
                             description: `Credit sale ${saleNumber}`,
                             saleId: sale.id
                         }
@@ -171,6 +172,7 @@ class SalesService {
                                 customerId,
                                 userId,
                                 amount: remainingAmount,
+                                originalAmount: remainingAmount, // Track original debt amount
                                 description: `Remaining balance for sale ${saleNumber}`,
                                 saleId: sale.id
                             }
